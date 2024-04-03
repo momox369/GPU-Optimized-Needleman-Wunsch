@@ -18,9 +18,8 @@ void nw_gpu0(unsigned char* sequence1_d, unsigned char* sequence2_d, int* scores
 }
 
 
-__global__ void kernel_nw0(unsigned char* sequence1_d, unsigned char* sequence2_d, int* scores_d, unsigned int numSequences)
+__global__ void kernel_nw0(unsigned char* sequence1, unsigned char* sequence2, int* scores_d, unsigned int numSequences)
 {
-    int i = threadIdx.x + blockIdx.x * blockDim.x;
     // TODO: Consider where sould be the best memory location for the matrix
     __shared__ int matrix[SEQUENCE_LENGTH][SEQUENCE_LENGTH];
 
@@ -47,7 +46,7 @@ __global__ void kernel_nw0(unsigned char* sequence1_d, unsigned char* sequence2_
                 int topleft = (matrix[row - 1][col - 1]); //if not 1st row and not 1st col, take the value diagonally above and to the left
                 int insertion = top + INSERTION;
                 int deletion  = left + DELETION;
-                int match     = topleft + ((sequence2[s*SEQUENCE_LENGTH + row] == sequence1[s*SEQUENCE_LENGTH + col]) ? MATCH : MISMATCH); //check if there is a match
+                int match     = topleft + ((sequence2[blockIdx.x*SEQUENCE_LENGTH + row] == sequence1[blockIdx.x*SEQUENCE_LENGTH + col]) ? MATCH : MISMATCH); //check if there is a match
                 int max = (insertion > deletion) ? insertion : deletion; 
                 max = (match > max)?match:max;
                 matrix[row][col] = max; //store it in the matrix
@@ -55,7 +54,7 @@ __global__ void kernel_nw0(unsigned char* sequence1_d, unsigned char* sequence2_
         __syncthreads();
     }
 
-        scores[blockIdx.x] = matrix[SEQUENCE_LENGTH - 1][SEQUENCE_LENGTH - 1];
+        scores_d[blockIdx.x] = matrix[SEQUENCE_LENGTH - 1][SEQUENCE_LENGTH - 1];
  
 }
 
