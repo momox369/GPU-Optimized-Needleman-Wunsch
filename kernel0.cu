@@ -21,7 +21,7 @@ void nw_gpu0(unsigned char* sequence1_d, unsigned char* sequence2_d, int* scores
 __global__ void kernel_nw0(unsigned char* sequence1, unsigned char* sequence2, int* scores_d, unsigned int numSequences)
 {
     // TODO: Consider where sould be the best memory location for the matrix
-    __shared__ int matrix[SEQUENCE_LENGTH][SEQUENCE_LENGTH];
+    int matrix[SEQUENCE_LENGTH][SEQUENCE_LENGTH];
 
     // TODO: Optimize the memory access pattern
     if (threadIdx.x == 0) {
