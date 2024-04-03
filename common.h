@@ -13,6 +13,7 @@ void nw_gpu0(unsigned char* sequence1_d, unsigned char* sequence2_d, int* scores
 void nw_gpu1(unsigned char* sequence1_d, unsigned char* sequence2_d, int* scores_d, unsigned int numSequences);
 void nw_gpu2(unsigned char* sequence1_d, unsigned char* sequence2_d, int* scores_d, unsigned int numSequences);
 void nw_gpu3(unsigned char* sequence1_d, unsigned char* sequence2_d, int* scores_d, unsigned int numSequences);
+__global__ void kernel_nw0(unsigned char* sequence1_d, unsigned char* sequence2_d, int* scores_d, unsigned int numSequences);
 
 #endif
 
