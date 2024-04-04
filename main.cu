@@ -1,4 +1,3 @@
-
 #include <assert.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -46,11 +45,12 @@ void nw_cpu(unsigned char* sequence1, unsigned char* sequence2, int* scores, uns
 }
 
 void verify(int* scores_cpu, int* scores_gpu, unsigned int numSequences) {
+    // return;
     for(unsigned int s = 0; s < numSequences; ++s) {
         if(scores_cpu[s] != scores_gpu[s]) {
             printf("\033[1;31mMismatch at sequence s = %u (CPU result = %d, GPU result = %d)\033[0m\n", s, scores_cpu[s], scores_gpu[s]);
-            return;
-        } else { printf("score = %d\n", scores_cpu[s]); // XXX
+           return;
+        // } else { printf("sequence s = %u (CPU result = %d, GPU result = %d)\n", s, scores_cpu[s], scores_gpu[s]); // XXX
         }
     }
     printf("Verification succeeded\n");
