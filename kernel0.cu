@@ -13,16 +13,17 @@ void nw_gpu0(unsigned char* sequence1_d, unsigned char* sequence2_d, int* scores
 
     const unsigned int numThreadsPerBlock = SEQUENCE_LENGTH;
     const unsigned int numBlocks = numSequences;
-    kernel_nw0 <<< numBlocks, numThreadsPerBlock >>> (sequence1_d, sequence2_d, scores_d, numSequences);
+    //allocate a matrix of size SEQUENCE_LENGTH x SEQUENCE_LENGTH x numSequences for the gpu
+    int* matrix_d;
+    cudaMalloc((void**)&matrix_d, SEQUENCE_LENGTH * SEQUENCE_LENGTH * numSequences * sizeof(int));
+    
+    kernel_nw0 <<< numBlocks, numThreadsPerBlock >>> (sequence1_d, sequence2_d, scores_d, numSequences, matrix_d);
 
 }
 
 
-__global__ void kernel_nw0(unsigned char* sequence1, unsigned char* sequence2, int* scores_d, unsigned int numSequences)
+__global__ void kernel_nw0(unsigned char* sequence1, unsigned char* sequence2, int* scores_d, unsigned int numSequences, int* matrix)
 {
-    // TODO: Consider where sould be the best memory location for the matrix
-    int matrix[SEQUENCE_LENGTH][SEQUENCE_LENGTH];
-
     // TODO: Optimize the memory access pattern
     if (threadIdx.x == 0) {
         // Initialize the first row and column of the matrix
@@ -35,7 +36,7 @@ __global__ void kernel_nw0(unsigned char* sequence1, unsigned char* sequence2, i
 
     // matrix[0][threadIdx.x] = (threadIdx.x + 1)*DELETION;
     int hisIteration = 1;
-    for( int rowIndex = 1; rowIndex < SEQUENCE_LENGTH; rowIndex++ ) {
+    for( int rowIndex = 1; rowIndex < SEQUENCE_LENGTH; rowIndex++ ) { //2*sequ - 1
         // 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
         int col = threadIdx.x +1;
         int row = hisIteration; //;
