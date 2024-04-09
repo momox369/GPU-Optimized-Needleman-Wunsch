@@ -18,7 +18,7 @@ __global__ void kernel_nw0(unsigned char* sequence1, unsigned char* sequence2, i
     __syncthreads();
 
     int threadIteration = 1;
-    for( int diagIndex = 0; diagIndex < SEQUENCE_LENGTH*SEQUENCE_LENGTH; ++diagIndex) { //2*sequ - 1
+    for( int diagIndex = 0; diagIndex < SEQUENCE_LENGTH*SEQUENCE_LENGTH; ++diagIndex) { //sequ^2 - 1
         // 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
         int col = threadIdx.x + 1;
         int row = threadIteration; // the row being addressed, starts at 1
@@ -63,14 +63,8 @@ __global__ void kernel_nw0(unsigned char* sequence1, unsigned char* sequence2, i
     //     //     blockIdx.x,
     //     //     seqMatrix[SEQUENCE_LENGTH * SEQUENCE_LENGTH - 1]);
     //     scores_d[blockIdx.x] = seqMatrix[SEQUENCE_LENGTH * SEQUENCE_LENGTH - 1] + 1;
-    // }
+    // 
     scores_d[blockIdx.x] = seqMatrix[matrixDim * matrixDim -1];
-    // if(blockIdx.x != 54)
-    //     scores_d[blockIdx.x] = seqMatrix[SEQUENCE_LENGTH * SEQUENCE_LENGTH -1] + 1;
-    // else
-    //     scores_d[blockIdx.x] = seqMatrix[SEQUENCE_LENGTH * SEQUENCE_LENGTH -1];
-    // if(threadIdx.x == 0 && blockIdx.x > 1900) printf("I entered %d %d\n", blockIdx.x, scores_d[blockIdx.x]);
-
 }
 
 void nw_gpu0(unsigned char* sequence1_d, unsigned char* sequence2_d, int* scores_d, unsigned int numSequences) {
