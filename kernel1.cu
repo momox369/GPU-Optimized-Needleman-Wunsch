@@ -4,13 +4,17 @@
 #include "common.h"
 #include "timer.h"
 
+__shared__ int* currentDiagonal = (int*)malloc(SEQUENCE_LENGTH * sizeof(int));
+__shared__ int* previousDiagonal = (int*)malloc(SEQUENCE_LENGTH * sizeof(int));
+__shared__ int* previousPreviousDiagonal = (int*)malloc(SEQUENCE_LENGTH * sizeof(int));
+
 __global__ void kernel_nw1(unsigned char* sequence1, unsigned char* sequence2, int* scores_d, unsigned int numSequences)
 {
     int matrixDim = SEQUENCE_LENGTH + 1;
-    
-    __shared__ int* currentDiagonal = (int*)malloc(SEQUENCE_LENGTH * sizeof(int));
-    __shared__ int* previousDiagonal = (int*)malloc(SEQUENCE_LENGTH * sizeof(int));
-    __shared__ int* previousPreviousDiagonal = (int*)malloc(SEQUENCE_LENGTH * sizeof(int));
+
+    // __shared__ int* currentDiagonal = (int*)malloc(SEQUENCE_LENGTH * sizeof(int));
+    // __shared__ int* previousDiagonal = (int*)malloc(SEQUENCE_LENGTH * sizeof(int));
+    // __shared__ int* previousPreviousDiagonal = (int*)malloc(SEQUENCE_LENGTH * sizeof(int));
 
     if(threadIdx.x == 0){
         //Initialize previous Diagonal from left to right bottom to top
