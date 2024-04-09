@@ -8,8 +8,16 @@ __global__ void kernel_nw1(unsigned char* sequence1, unsigned char* sequence2, i
 {
     int matrixDim = SEQUENCE_LENGTH + 1;
     unsigned int matrixIndex = blockIdx.x * matrixDim * matrixDim;
-    int* seqMatrix = matrix + matrixIndex;
+    //int* seqMatrix = matrix + matrixIndex; //This represents one matrix in the sequence of matrices
 
+    // Optimization: Bring each matrix into shared memory
+    __shared__ int seqMatrix[SEQUENCE_LENGTH + 1][SEQUENCE_LENGTH + 1];
+    
+    // Copy from global to shared memory
+    for (int i = threadIdx.x; i < matrixDim * matrixDim; i += blockDim.x) {
+        seqMatrix[i / matrixDim][i % matrixDim] = matrix[matrixIndex + i];
+    }
+    
     // 1 - Initialize the matrix with the scores for the first row and column
     seqMatrix[0] = 0;
     seqMatrix[threadIdx.x + 1] = (threadIdx.x + 1) * DELETION;
