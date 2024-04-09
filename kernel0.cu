@@ -7,7 +7,7 @@
 __global__ void kernel_nw0(unsigned char* sequence1, unsigned char* sequence2, int* scores_d, unsigned int numSequences, int* matrix)
 {
     int matrixDim = SEQUENCE_LENGTH + 1;
-    unsigned int matrixIndex = blockIdx.x * matrixDim * matrixDim;
+    int matrixIndex = blockIdx.x * matrixDim * matrixDim;
     int* seqMatrix = matrix + matrixIndex;
     // int* seqMatrix = matrix + matrixIndex;
 

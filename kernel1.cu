@@ -4,37 +4,53 @@
 #include "common.h"
 #include "timer.h"
 
-__global__ void kernel_nw1(unsigned char* sequence1, unsigned char* sequence2, int* scores_d, unsigned int numSequences, int* matrix)
+__global__ void kernel_nw1(unsigned char* sequence1, unsigned char* sequence2, int* scores_d, unsigned int numSequences)
 {
     int matrixDim = SEQUENCE_LENGTH + 1;
-    unsigned int matrixIndex = blockIdx.x * matrixDim * matrixDim;
-    //int* seqMatrix = matrix + matrixIndex; //This represents one matrix in the sequence of matrices
+    
+    __shared__ int* currentDiagonal = (int*)malloc(SEQUENCE_LENGTH * sizeof(int));
+    __shared__ int* previousDiagonal = (int*)malloc(SEQUENCE_LENGTH * sizeof(int));
+    __shared__ int* previousPreviousDiagonal = (int*)malloc(SEQUENCE_LENGTH * sizeof(int));
 
-    // Optimization: Bring each matrix into shared memory
-    __shared__ int seqMatrix[SEQUENCE_LENGTH + 1][SEQUENCE_LENGTH + 1];
-    
-    // Copy from global to shared memory
-    for (int i = threadIdx.x; i < matrixDim * matrixDim; i += blockDim.x) {
-        seqMatrix[i / matrixDim][i % matrixDim] = matrix[matrixIndex + i];
+    if(threadIdx.x == 0){
+        //Initialize previous Diagonal from left to right bottom to top
+        previousPreviousDiagonal[0] = 0;
+        previousDiagonal[0] = INSERTION;
+        previousDiagonal[1] = DELETION;
     }
-    
-    // 1 - Initialize the matrix with the scores for the first row and column
-    seqMatrix[0] = 0;
-    seqMatrix[threadIdx.x + 1] = (threadIdx.x + 1) * DELETION;
-    seqMatrix[(threadIdx.x + 1) * matrixDim] = (threadIdx.x + 1) * INSERTION;
-    __syncthreads();
 
     // 2 - Compute the scores for the rest of the matrix
-    int threadIteration = 1;
-    for( int diagIndex = 0; diagIndex < SEQUENCE_LENGTH*SEQUENCE_LENGTH; ++diagIndex) { //sequ^2 - 1
-        // 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-        int col = threadIdx.x + 1;
-        int row = threadIteration; // the row being addressed, starts at 1
-        if(threadIdx.x <= diagIndex && row < matrixDim && col < matrixDim) {
+    int threadIteration = 0;
+
+    if(threadIdx.x == 0){
+        threadIteration = 2;
+    }
+
+    if(threadIdx.x == 1){
+        threadIteration = 1;
+    }
+    __syncthreads();
+
+    for (int diagIndex = 2; diagIndex < (2 * SEQUENCE_LENGTH) - 1 ; ++diagIndex) {
+        // Compute current diagonal from left to right bottom to top
+        int col = threadIdx.x;
+        int row = threadIteration; // the row being addressed, starts at 2
+
+        if(threadIdx.x == 0){
+            currentDiagonal[0] = threadIteration * INSERTION;
+        }
+
+        else if(row == 0){
+            currentDiagonal[col] = (threadIdx.x + 1) * DELETION;
+        }
+
+        else {
+            
+            if(threadIdx.x <= diagIndex && row < matrixDim && col < matrixDim) {
             ++threadIteration;
-            int top     = (seqMatrix[(row - 1) * matrixDim + col]); //else, take the value directly above it
-            int left    = (seqMatrix[row * matrixDim + col - 1]); //else, take the value directly to the left of it
-            int topleft = (seqMatrix[(row - 1) * matrixDim + col - 1]); //if not 1st row and not 1st col, take the value diagonally above and to the left
+            int top     = (previousDiagonal[col]); //else, take the value directly above it
+            int left    = (previousDiagonal[col-1]); //else, take the value directly to the left of it
+            int topleft = (previousPreviousDiagonal[col-1]); //if not 1st row and not 1st col, take the value diagonally above and to the left
             int insertion = top + INSERTION;
             int deletion  = left + DELETION;
             int match     = topleft + (
@@ -44,35 +60,21 @@ __global__ void kernel_nw1(unsigned char* sequence1, unsigned char* sequence2, i
                 ); //check if there is a match
             int max = (insertion > deletion) ? insertion : deletion; 
             max = (match > max) ? match : max;
-            seqMatrix[row * matrixDim + col] = max; //store it in the matrix
+            currentDiagonal[col] = max; //store it in the matrix
 
-            //  if(threadIdx.x > blockDim.x-4 && blockIdx.x == 1 && row > matrixDim-4) {
-            //     printf("[%d] %d<>%d t%d l%d tl%d i%d d%d m%d: x%d \n ",
-            //         threadIdx.x,
-            //         sequence2[blockIdx.x*SEQUENCE_LENGTH + row],
-            //         sequence1[blockIdx.x*SEQUENCE_LENGTH + col],
-            //         top    ,
-            //         left   ,
-            //         topleft,
-            //         insertion,
-            //         deletion ,
-            //         match,
-            //         max   );
-            // }
+            }
         }
         __syncthreads();
+
+        // Swap the buffers
+        int* temp = previousPreviousDiagonal;
+        previousPreviousDiagonal = previousDiagonal;
+        previousDiagonal = currentDiagonal;
     }
     __syncthreads();
 
-    // if(threadIdx.x == 0) {
-    //     // printf("[%d] seqMatrix[SEQUENCE_LENGTH * SEQUENCE_LENGTH - 1] = %d\n", 
-    //     //     blockIdx.x,
-    //     //     seqMatrix[SEQUENCE_LENGTH * SEQUENCE_LENGTH - 1]);
-    //     scores_d[blockIdx.x] = seqMatrix[SEQUENCE_LENGTH * SEQUENCE_LENGTH - 1] + 1;
-    // 
-
-    // 3 - Store the score of the last cell in the scores array    
-    scores_d[blockIdx.x] = seqMatrix[matrixDim * matrixDim -1];
+    // 3 - Write the final score to the output array
+    scores_d[blockIdx.x] = currentDiagonal[SEQUENCE_LENGTH - 1];
 }
 
 
@@ -83,27 +85,7 @@ void nw_gpu1(unsigned char* sequence1_d, unsigned char* sequence2_d, int* scores
 
     const unsigned int numThreadsPerBlock = SEQUENCE_LENGTH;
     const unsigned int numBlocks = numSequences;
-
-    //allocate a matrix of size (SEQUENCE_LENGTH + 1) x (SEQUENCE_LENGTH + 1) x (numSequences) for the gpu
-    int matrixDim = SEQUENCE_LENGTH + 1;
-    int* matrix_d;
-    cudaError_t cuda_status;
-    cuda_status = cudaMalloc((void**)&matrix_d, matrixDim * matrixDim * numSequences * sizeof(int));
-    if(cuda_status != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed: %s\n", cudaGetErrorString(cuda_status));
-        return;
-    }
-    // else {
-    //     printf("cudaMalloc((void**)&matrix_d, matrixDim * matrixDim * numSequences * sizeof(int) = %lu",
-    //         matrixDim * matrixDim * numSequences * sizeof(int)
-    //         );
-    // }    
-    cudaDeviceSynchronize();
-    
     //Launching the kernel
-    kernel_nw1 <<< numBlocks, numThreadsPerBlock >>> (sequence1_d, sequence2_d, scores_d, numSequences, matrix_d);
-    cudaDeviceSynchronize();
-
-    cudaFree(matrix_d);
+    kernel_nw1 <<< numBlocks, numThreadsPerBlock >>> (sequence1_d, sequence2_d, scores_d, numSequences);
 }
 
