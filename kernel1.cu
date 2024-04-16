@@ -90,9 +90,17 @@ __global__ void kernel_nw1(unsigned char* sequence1, unsigned char* sequence2, i
         __syncthreads();
 
         // Swap the buffers
-        __shared__ int* temp = previousPreviousDiagonal;
-        previousPreviousDiagonal = previousDiagonal;
-        previousDiagonal = currentDiagonal;
+        // Manually swap the buffers
+        __syncthreads(); // Ensure all threads have completed processing before swapping
+
+        if (threadIdx.x < SEQUENCE_LENGTH) {
+            int temp = previousPreviousDiagonal[threadIdx.x];
+            previousPreviousDiagonal[threadIdx.x] = previousDiagonal[threadIdx.x];
+            previousDiagonal[threadIdx.x] = currentDiagonal[threadIdx.x];
+            currentDiagonal[threadIdx.x] = temp;  // Optional: You might not need to swap with currentDiagonal depending on your logic.
+        }
+        __syncthreads(); // Ensure the swap is completed before continuing
+
     }
 
     // 3 - Write the final score to the output array
