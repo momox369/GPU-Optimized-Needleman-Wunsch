@@ -85,7 +85,7 @@ __global__ void kernel_nw1(unsigned char* sequence1, unsigned char* sequence2, i
         __syncthreads();
 
         // Swap the buffers
-        int* temp = previousPreviousDiagonal;
+        __shared__ int* temp = previousPreviousDiagonal;
         previousPreviousDiagonal = previousDiagonal;
         previousDiagonal = currentDiagonal;
     }
