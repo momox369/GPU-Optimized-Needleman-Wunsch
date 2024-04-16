@@ -49,12 +49,17 @@ __global__ void kernel_nw1(unsigned char* sequence1, unsigned char* sequence2, i
 
             currentDiagonal[col] = max; //store it in the matrix
         }
-        __syncthreads();
+        // Manually swap the buffers
+        __syncthreads(); // Ensure all threads have completed processing before swapping
 
-        // Swap the buffers
-        int* temp = previousPreviousDiagonal;
-        previousPreviousDiagonal = previousDiagonal;
-        previousDiagonal = currentDiagonal;
+        if (threadIdx.x < SEQUENCE_LENGTH) {
+            int temp = previousPreviousDiagonal[threadIdx.x];
+            previousPreviousDiagonal[threadIdx.x] = previousDiagonal[threadIdx.x];
+            previousDiagonal[threadIdx.x] = currentDiagonal[threadIdx.x];
+            currentDiagonal[threadIdx.x] = temp;  // Optional: You might not need to swap with currentDiagonal depending on your logic.
+        }
+        __syncthreads(); // Ensure the swap is completed before continuing
+
     }
     __syncthreads();
 
