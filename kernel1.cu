@@ -4,12 +4,14 @@
 #include "common.h"
 #include "timer.h"
 
-__shared__ int currentDiagonal[SEQUENCE_LENGTH];
-__shared__ int previousDiagonal[SEQUENCE_LENGTH];
-__shared__ int previousPreviousDiagonal[SEQUENCE_LENGTH];
 
 __global__ void kernel_nw1(unsigned char* sequence1, unsigned char* sequence2, int* scores_d, unsigned int numSequences)
 {
+
+    __shared__ int currentDiagonal[SEQUENCE_LENGTH];
+__shared__ int previousDiagonal[SEQUENCE_LENGTH];
+__shared__ int previousPreviousDiagonal[SEQUENCE_LENGTH];
+
     if(threadIdx.x == 0){
         //Initialize previous Diagonal from left to right bottom to top
         previousPreviousDiagonal[0] = 0;
