@@ -9,8 +9,8 @@ __global__ void kernel_nw1(unsigned char* sequence1, unsigned char* sequence2, i
 {
 
     __shared__ int currentDiagonal[SEQUENCE_LENGTH];
-__shared__ int previousDiagonal[SEQUENCE_LENGTH];
-__shared__ int previousPreviousDiagonal[SEQUENCE_LENGTH];
+    __shared__ int previousDiagonal[SEQUENCE_LENGTH];
+    __shared__ int previousPreviousDiagonal[SEQUENCE_LENGTH];
 
     if(threadIdx.x == 0){
         //Initialize previous Diagonal from left to right bottom to top
@@ -52,7 +52,6 @@ __shared__ int previousPreviousDiagonal[SEQUENCE_LENGTH];
             currentDiagonal[col] = max; //store it in the matrix
         }
         // Manually swap the buffers
-        __syncthreads(); // Ensure all threads have completed processing before swapping
 
         if (threadIdx.x < SEQUENCE_LENGTH) {
             int temp = previousPreviousDiagonal[threadIdx.x];
@@ -60,8 +59,6 @@ __shared__ int previousPreviousDiagonal[SEQUENCE_LENGTH];
             previousDiagonal[threadIdx.x] = currentDiagonal[threadIdx.x];
             currentDiagonal[threadIdx.x] = temp;  // Optional: You might not need to swap with currentDiagonal depending on your logic.
         }
-        __syncthreads(); // Ensure the swap is completed before continuing
-
     }
     __syncthreads();
 
@@ -89,11 +86,9 @@ __shared__ int previousPreviousDiagonal[SEQUENCE_LENGTH];
 
             currentDiagonal[col] = max; //store it in the matrix
         }
-        __syncthreads();
 
         // Swap the buffers
         // Manually swap the buffers
-        __syncthreads(); // Ensure all threads have completed processing before swapping
 
         if (threadIdx.x < SEQUENCE_LENGTH) {
             int temp = previousPreviousDiagonal[threadIdx.x];
@@ -101,9 +96,8 @@ __shared__ int previousPreviousDiagonal[SEQUENCE_LENGTH];
             previousDiagonal[threadIdx.x] = currentDiagonal[threadIdx.x];
             currentDiagonal[threadIdx.x] = temp;  // Optional: You might not need to swap with currentDiagonal depending on your logic.
         }
-        __syncthreads(); // Ensure the swap is completed before continuing
-
     }
+    __syncthreads();
 
     // 3 - Write the final score to the output array
     scores_d[blockIdx.x] = currentDiagonal[SEQUENCE_LENGTH - 1];
