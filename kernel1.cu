@@ -15,42 +15,75 @@ __global__ void kernel_nw1(unsigned char* sequence1, unsigned char* sequence2, i
     if(threadIdx.x == 0){
         //Initialize previous Diagonal from left to right bottom to top
         previousPreviousDiagonal[0] = 0;
-    }
-    __syncthreads();
-
-    if (threadIdx.x == 1){
         previousDiagonal[0] = INSERTION;
         previousDiagonal[1] = DELETION;
     }
     __syncthreads();
 
-    // 2 - Compute the scores for the first part of the matrix
-    if (threadIdx.x >= 2 && threadIdx.x < SEQUENCE_LENGTH){
-        //initialize borders of the diagonal
-        currentDiagonal[0] = threadIdx.x * INSERTION;
-        currentDiagonal[threadIdx.x] = threadIdx.x * DELETION;
-        
-        //Compute internal elements
-        for (unsigned int i = 1; i < threadIdx.x; ++i){
-            unsigned int row = threadIdx.x - i + 1;
-            unsigned int col = i;
+    int diagonals = (2*SEQUENCE_LENGTH)-3;
 
-            int top = previousDiagonal[col];
-            int left = previousDiagonal[col - 1];
-            int topleft = previousPreviousDiagonal[col - 1];
-
-            int insertion = top + INSERTION;
-            int deletion  = left + DELETION;
-            int match     = topleft + (
-                (sequence2[blockIdx.x*SEQUENCE_LENGTH + row] == sequence1[blockIdx.x*SEQUENCE_LENGTH + col])
-                ? MATCH 
-                : MISMATCH
-                ); //check if there is a match
-            int max = (insertion > deletion) ? insertion : deletion; 
-            max = (match > max) ? match : max;
-
-            currentDiagonal[col] = max; //store it in the matrix
+    if (threadIdx.x < diagonals){
+        // Print currentDiagonal
+        printf("currentDiagonal: ");
+        for (int i = 0; i < SEQUENCE_LENGTH; i++) {
+            printf("%d ", currentDiagonal[i]);
         }
+        printf("\n");
+
+        // Print previousDiagonal
+        printf("previousDiagonal: ");
+        for (int i = 0; i < SEQUENCE_LENGTH; i++) {
+            printf("%d ", previousDiagonal[i]);
+        }
+        printf("\n");
+
+        // Print previousPreviousDiagonal
+        printf("previousPreviousDiagonal: ");
+        for (int i = 0; i < SEQUENCE_LENGTH; i++) {
+            printf("%d ", previousPreviousDiagonal[i]);
+        }
+        printf("\n");
+        //
+
+        //with initialization
+        if (threadIdx.x < diagonals/2){
+            int diagonal_length = threadIdx.x + 2;
+            currentDiagonal[0] = diagonal_length * INSERTION;
+            currentDiagonal[diagonal_length] = diagonal_length * DELETION;
+
+            //Compute internal elements
+            for (unsigned int i = 1; i < diagonal_length; ++i){
+                int row = threadIdx.x - i + 1;
+                int col = i;
+
+                int top = previousDiagonal[col];
+                int left = previousDiagonal[col - 1];
+                int topleft = previousPreviousDiagonal[col - 1];
+
+                int insertion = top + INSERTION;
+                int deletion  = left + DELETION;
+                int match     = topleft + (
+                    (sequence2[blockIdx.x*SEQUENCE_LENGTH + row] == sequence1[blockIdx.x*SEQUENCE_LENGTH + col])
+                    ? MATCH 
+                    : MISMATCH
+                    ); //check if there is a match
+                int max = (insertion > deletion) ? insertion : deletion; 
+                max = (match > max) ? match : max;
+
+                currentDiagonal[col] = max; //store it in the matrix
+            }
+        }
+        else {
+            //without initialization
+        }
+    }
+
+    // 2 - Compute the scores for the first part of the matrix
+    if (threadIdx.x >= 2 && threadIdx.x < SEQUENCE_LENGTH-2){
+        //initialize borders of the diagonal
+        //
+        
+        
         // Manually swap the buffers
 
         if (threadIdx.x < SEQUENCE_LENGTH) {
